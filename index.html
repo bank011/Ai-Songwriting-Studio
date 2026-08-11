@@ -532,9 +532,9 @@
 
     <section class="panel">
       <div class="panel-head"><h2 style="font-family:var(--font-display); font-size:22px;">โมเดล AI ที่ใช้ในแต่ละส่วน</h2></div>
-      <div class="tag-ref"><span class="k">แต่งเนื้อเพลงหลัก</span><span class="v">gemini-3.1-pro-preview — ใช้ทั้งตอนแต่งครั้งแรกและตอนปรับแก้ เพราะต้องใช้ความเข้าใจเชิงลึกและความคิดสร้างสรรค์สูงสุด</span></div>
-      <div class="tag-ref"><span class="k">สุ่ม/ขยายเรื่องราว, แนะนำโครงสร้าง</span><span class="v">gemini-3.1-flash-lite-preview — งานเบา ต้องการความเร็ว ไม่ซับซ้อนเท่าการแต่งเพลงเต็มเพลง</span></div>
-      <div class="tag-ref"><span class="k">SRT / คำโปรยยูทูป</span><span class="v">gemini-3-flash-preview — งานแปลงรูปแบบ/สรุปเนื้อหาที่มีอยู่แล้ว ไม่ต้องใช้โมเดลระดับสูงสุด</span></div>
+      <div class="tag-ref"><span class="k">แต่งเนื้อเพลงหลัก</span><span class="v">gemini-2.5-pro — ใช้ทั้งตอนแต่งครั้งแรกและตอนปรับแก้ เพราะต้องใช้ความเข้าใจเชิงลึกและความคิดสร้างสรรค์สูงสุด</span></div>
+      <div class="tag-ref"><span class="k">สุ่ม/ขยายเรื่องราว, แนะนำโครงสร้าง</span><span class="v">gemini-2.5-pro — ใช้รุ่นเดียวกับโมเดลหลักตามที่ตั้งค่าไว้</span></div>
+      <div class="tag-ref"><span class="k">SRT / คำโปรยยูทูป</span><span class="v">gemini-2.5-pro — ใช้รุ่นเดียวกับโมเดลหลักตามที่ตั้งค่าไว้</span></div>
     </section>
 
     <section class="panel">
@@ -553,7 +553,7 @@
       <div class="step"><div class="num">?</div><div><h4>key ของฉันปลอดภัยไหม</h4><p>หน้านี้เรียก Gemini API ตรงจากเบราว์เซอร์ของคุณไปยัง Google โดยไม่มีเซิร์ฟเวอร์กลาง ค่าเริ่มต้นคือไม่บันทึก key ไว้ที่ใดหลังปิดหรือรีเฟรชหน้า ถ้าติ๊ก "จำ key ไว้ในเครื่องนี้" key จะถูกเก็บไว้ใน localStorage ของเบราว์เซอร์บนอุปกรณ์นี้เท่านั้น ไม่ส่งไปที่อื่น แต่ถ้าใช้เครื่องสาธารณะ/ร่วมกับคนอื่นไม่ควรติ๊กไว้</p></div></div>
       <div class="step"><div class="num">?</div><div><h4>ทำไมข้อมูล/เพลงที่แต่งไว้หายเมื่อรีเฟรช</h4><p>ปกติแล้วหน้านี้บันทึกฟอร์มและเพลงล่าสุดอัตโนมัติ (autosave) รีเฟรชแล้วไม่ควรหาย — ถ้าหายจริง อาจเป็นเพราะเบราว์เซอร์อยู่ในโหมดส่วนตัว/ไม่รองรับ localStorage หรือมีการกดปุ่ม "ล้างข้อมูลที่บันทึกไว้ทั้งหมด" ไปก่อนหน้า</p></div></div>
       <div class="step"><div class="num">?</div><div><h4>เปิดไฟล์แล้วเชื่อมต่อไม่ได้</h4><p>เบราว์เซอร์บางตัวจำกัดการยิง request จากไฟล์ที่เปิดตรงๆ (file://) แนะนำให้อัปโหลดไฟล์นี้ขึ้นโฮสต์ฟรี เช่น GitHub Pages หรือ Netlify แล้วเปิดผ่านลิงก์ https แทน</p></div></div>
-      <div class="step"><div class="num">?</div><div><h4>ขึ้น error "model not found"</h4><p>แปลว่าชื่อโมเดลที่ตั้งไว้ในโค้ด (เช่น gemini-3.1-pro-preview) ไม่มีในบัญชีของคุณ ให้เข้า Google AI Studio ดูรายชื่อโมเดลที่ใช้ได้จริง แล้วแก้ค่า PRIMARY_MODEL / ASSIST_MODEL / EXPORT_MODEL ในโค้ดให้ตรงกัน</p></div></div>
+      <div class="step"><div class="num">?</div><div><h4>ขึ้น error "model not found"</h4><p>แปลว่าชื่อโมเดลที่ตั้งไว้ในโค้ด (เช่น gemini-2.5-pro) ไม่มีในบัญชีของคุณ ให้เข้า Google AI Studio ดูรายชื่อโมเดลที่ใช้ได้จริง แล้วแก้ค่า PRIMARY_MODEL / ASSIST_MODEL / EXPORT_MODEL ในโค้ดให้ตรงกัน</p></div></div>
     </section>
   </div>
 
@@ -848,9 +848,9 @@
   }
 
   /* ---------------- gemini call ---------------- */
-  var PRIMARY_MODEL = "gemini-3.1-pro-preview";     // แต่งเนื้อเพลงหลัก + ปรับแก้
-  var ASSIST_MODEL   = "gemini-3.1-flash-lite-preview"; // Story / Random Story / แนะนำโครงสร้าง
-  var EXPORT_MODEL   = "gemini-3-flash-preview";     // SRT / YouTube Description
+  var PRIMARY_MODEL = "gemini-2.5-pro";     // แต่งเนื้อเพลงหลัก + ปรับแก้
+  var ASSIST_MODEL   = "gemini-2.5-pro"; // Story / Random Story / แนะนำโครงสร้าง
+  var EXPORT_MODEL   = "gemini-2.5-pro";     // SRT / YouTube Description
 
   function callGemini(systemPrompt, contents, model){
     var key = state.apiKey || $("#apiKey").value.trim();
