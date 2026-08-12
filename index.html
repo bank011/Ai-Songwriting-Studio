@@ -1,1 +1,1488 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Songwriting Studio — สตูดิโอแต่งเพลงด้วย AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- neutrals (~80% of the UI) ---- */
+    --bg: #0B0A12;
+    --bg-2: #151225;
+    --panel-a: rgba(24,20,40,0.62);
+    --panel-b: rgba(11,10,18,0.55);
+    --line-neutral: rgba(248,250,252,0.08);
+    --text: #F8FAFC;
+    --text-muted: #A1A1AA;
+    --text-dim: #6B6975;
 
+    /* ---- purple: creation / primary action (~15%) ---- */
+    --primary: #A855F7;
+    --primary-2: #C084FC;
+    --primary-soft: rgba(168,85,247,0.14);
+    --primary-line: rgba(168,85,247,0.28);
+
+    /* ---- cyan: highlight / focus / active (~5%) ---- */
+    --accent: #06B6D4;
+    --accent-2: #22D3EE;
+    --accent-soft: rgba(6,182,212,0.13);
+    --accent-line: rgba(6,182,212,0.32);
+
+    --success: #2DD4A8;
+    --danger: #F87171;
+
+    --radius: 16px;
+    --font-display: 'Bebas Neue', 'Noto Sans Thai', sans-serif;
+    --font-body: 'Inter', 'Noto Sans Thai', sans-serif;
+    --font-mono: 'Space Mono', 'Noto Sans Thai', monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(900px 520px at 8% -8%, rgba(168,85,247,0.16) 0%, transparent 60%),
+      radial-gradient(700px 460px at 104% 6%, rgba(6,182,212,0.10) 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+  ::selection{ background: var(--primary); color:#0B0A12; }
+
+  /* ---------- layout shell ---------- */
+  .shell{ max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  header.hero{ position:relative; padding: 18px 4px 34px; }
+  .rec-row{ display:flex; align-items:center; gap:10px; margin-bottom: 18px; }
+  .rec-dot{ width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 0 rgba(6,182,212,0.6); animation: pulse-cyan 2.1s infinite; }
+  @keyframes pulse-cyan{
+    0%{ box-shadow:0 0 0 0 rgba(6,182,212,0.55); }
+    70%{ box-shadow:0 0 0 9px rgba(6,182,212,0); }
+    100%{ box-shadow:0 0 0 0 rgba(6,182,212,0); }
+  }
+  @keyframes pulse-purple{
+    0%{ box-shadow:0 0 0 0 rgba(168,85,247,0.55); }
+    70%{ box-shadow:0 0 0 9px rgba(168,85,247,0); }
+    100%{ box-shadow:0 0 0 0 rgba(168,85,247,0); }
+  }
+  .rec-label{ font-family: var(--font-mono); font-size:11px; letter-spacing: 0.18em; color: var(--text-muted); text-transform:uppercase; }
+
+  .hero h1{
+    font-family: var(--font-display);
+    font-size: clamp(42px, 8vw, 76px);
+    letter-spacing: 0.02em;
+    line-height: 0.92;
+    margin: 0 0 10px;
+    background: linear-gradient(100deg, #F8FAFC 0%, var(--primary-2) 45%, var(--accent-2) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.tag{ font-size:15px; color: var(--text-muted); max-width: 540px; line-height:1.6; margin:0 0 20px; }
+
+  .waveform{ display:flex; align-items:flex-end; gap:3px; height: 34px; opacity:0.6; margin-top: 4px; }
+  .waveform span{ width:3px; background: linear-gradient(180deg, var(--accent-2), var(--primary)); border-radius:2px; animation: wv 1.6s ease-in-out infinite; }
+  @keyframes wv{ 0%,100%{ transform: scaleY(0.3);} 50%{ transform: scaleY(1);} }
+
+  /* nav tabs */
+  .tabs{ display:flex; gap:8px; margin: 26px 0 6px; border-bottom: 1px solid var(--line-neutral); }
+  .tab-btn{
+    font-family: var(--font-mono); font-size:12.5px; letter-spacing:0.06em; text-transform:uppercase;
+    background:none; border:none; color: var(--text-dim); padding: 12px 4px; margin-right: 22px; cursor:pointer;
+    border-bottom: 2px solid transparent; transition: color .15s, border-color .15s;
+  }
+  .tab-btn.active{ color: var(--accent-2); border-bottom-color: var(--accent); }
+  .tab-btn:hover{ color: var(--text); }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* panels — glassmorphism cards */
+  .panel{
+    position: relative;
+    background: linear-gradient(165deg, var(--panel-a), var(--panel-b));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--primary-line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 20px 40px -24px rgba(0,0,0,0.6);
+    border-radius: var(--radius);
+    padding: 22px 22px 24px;
+    margin-top: 20px;
+  }
+  .panel-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .panel-head h2{ font-family: var(--font-display); font-size: 24px; letter-spacing:0.02em; margin:0; }
+  .panel-head .n{ font-family: var(--font-mono); color: var(--primary-2); margin-right:8px; }
+  .panel-sub{ font-size:13px; color: var(--text-muted); margin: -8px 0 16px; line-height:1.6; }
+
+  label.field-label{ display:block; font-size:12.5px; font-weight:600; color: var(--text-muted); margin-bottom:7px; letter-spacing:0.02em; }
+  textarea, input[type=text], input[type=password], select{
+    width:100%; background: rgba(6,5,14,0.5); border:1px solid var(--line-neutral); color: var(--text);
+    border-radius:10px; padding: 11px 13px; font-family: var(--font-body); font-size:14.5px; line-height:1.5;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  textarea:focus, input:focus, select:focus{ border-color: var(--accent); background: rgba(6,5,14,0.7); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea{ resize: vertical; min-height: 90px; }
+  ::placeholder{ color: var(--text-dim); }
+
+  .field{ margin-bottom:18px; }
+  .field-hint{ font-size:12px; color: var(--text-dim); margin-top:6px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:640px){ .grid-2{ grid-template-columns:1fr; } }
+
+  /* chips — selection = active/highlight state, so cyan */
+  .chip-group{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    font-size:13px; padding:7px 13px; border-radius:100px; border:1px solid var(--line-neutral);
+    background: rgba(6,5,14,0.4); color: var(--text-muted); cursor:pointer; user-select:none;
+    transition: all .15s;
+  }
+  .chip:hover{ border-color: var(--accent-line); color: var(--text); }
+  .chip.active{ background: var(--accent-soft); border-color: var(--accent); color: var(--accent-2); font-weight:600; }
+
+  /* buttons */
+  button{ font-family: var(--font-body); cursor:pointer; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border:none; border-radius:10px;
+    padding: 11px 18px; font-size:14px; font-weight:600; transition: transform .1s, filter .15s, box-shadow .15s;
+  }
+  .btn:active{ transform: scale(0.98); }
+  .btn-primary{ background: linear-gradient(135deg, var(--primary-2), var(--primary) 60%, #7C3AED); color:#F8FAFC; box-shadow: 0 8px 24px -10px rgba(168,85,247,0.55); }
+  .btn-primary:hover{ filter:brightness(1.1); }
+  .btn-primary:disabled{ opacity:0.5; cursor:not-allowed; filter:none; box-shadow:none; }
+  .btn-ghost{ background: rgba(248,250,252,0.05); color: var(--text); border:1px solid var(--line-neutral); }
+  .btn-ghost:hover{ border-color: var(--accent-line); color: var(--accent-2); }
+  .btn-small{ padding: 7px 12px; font-size:12.5px; border-radius:8px; }
+  .btn-icon{ background:none; border:1px solid var(--line-neutral); color: var(--text-muted); border-radius:8px; padding:6px 10px; font-size:12px; }
+  .btn-icon:hover{ color: var(--accent-2); border-color: var(--accent-line); }
+
+  /* generate button — deliberate ambient glow: purple = the creation action.
+     Uses an animated box-shadow (no blur-filter pseudo-element) to avoid
+     compositing artifacts inside the glass panel's backdrop-filter. */
+  #generateBtn{ position:relative; animation: glow-pulse 3.2s ease-in-out infinite; }
+  @keyframes glow-pulse{
+    0%, 100%{ box-shadow: 0 8px 24px -10px rgba(168,85,247,0.55), 0 0 0 1px rgba(168,85,247,0.35), 0 0 22px -2px rgba(168,85,247,0.4); }
+    50%{ box-shadow: 0 8px 26px -8px rgba(6,182,212,0.5), 0 0 0 1px rgba(6,182,212,0.35), 0 0 26px -2px rgba(6,182,212,0.45); }
+  }
+
+  /* api key panel */
+  .key-row{ display:flex; gap:10px; align-items:stretch; }
+  .key-row input{ flex:1; }
+  .key-status{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12.5px; font-family: var(--font-mono); }
+  .dot{ width:8px; height:8px; border-radius:50%; background: var(--text-dim); }
+  .dot.ok{ background: var(--success); box-shadow:0 0 8px var(--success); }
+  .dot.bad{ background: var(--danger); }
+  .dot.pending{ background: var(--primary); animation: pulse-purple 1s infinite; }
+
+  /* structure track list — chorus/hook = cyan highlight, bridge = purple pivot, rest neutral */
+  .track-list{ display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; }
+  .track-row{
+    display:grid; grid-template-columns: 34px 1fr auto; align-items:center; gap:12px;
+    background: rgba(6,5,14,0.45); border:1px solid var(--line-neutral); border-left:3px solid var(--text-dim);
+    border-radius:8px; padding: 9px 12px;
+  }
+  .track-row[data-type="Chorus"], .track-row[data-type="Hook"], .track-row[data-type="Refrain"]{ border-left-color: var(--accent); background: linear-gradient(90deg, var(--accent-soft), rgba(6,5,14,0.45) 40%); }
+  .track-row[data-type="Bridge"]{ border-left-color: var(--primary); background: linear-gradient(90deg, var(--primary-soft), rgba(6,5,14,0.45) 40%); }
+  .track-num{ font-family: var(--font-mono); color: var(--text-dim); font-size:12px; }
+  .track-name{ font-family: var(--font-mono); font-size:13px; font-weight:700; letter-spacing:0.02em; }
+  .track-actions{ display:flex; gap:4px; }
+  .track-actions button{ background:none; border:none; color: var(--text-dim); font-size:15px; padding:2px 6px; border-radius:5px; }
+  .track-actions button:hover{ color: var(--accent-2); background: rgba(6,182,212,0.1); }
+  .add-track-row{ display:flex; gap:8px; margin-top:4px; flex-wrap:wrap; }
+  .add-track-row select{ width:auto; flex:1; min-width:140px; }
+  .template-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+
+  /* output */
+  .out-block{ margin-bottom:20px; }
+  .out-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .out-head h3{ font-family: var(--font-mono); font-size:12.5px; letter-spacing:0.1em; text-transform:uppercase; color: var(--text-muted); margin:0; }
+  .out-title{
+    font-family: var(--font-display); font-size:32px; letter-spacing:0.02em; margin: 4px 0 18px;
+    background: linear-gradient(100deg, var(--primary-2), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .style-box{ font-family: var(--font-mono); font-size:13.5px; background: var(--accent-soft); border:1px solid var(--accent-line); color:#CFFAFE; border-radius:10px; padding:14px 16px; line-height:1.6; }
+  .lyrics-box{ font-family: var(--font-mono); font-size:14px; white-space:pre-wrap; background: rgba(6,5,14,0.55); border:1px solid var(--line-neutral); border-radius:10px; padding:18px 20px; line-height:1.85; }
+  .lyrics-box .tagline{ color: var(--primary-2); font-weight:700; }
+  .empty-out{ color: var(--text-dim); font-size:13.5px; padding: 30px 10px; text-align:center; border:1px dashed var(--line-neutral); border-radius:10px; }
+
+  #outputPanel.glow-active{ border-color: var(--accent-line); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 40px -14px rgba(6,182,212,0.35); }
+
+  .revise-row{ display:flex; gap:10px; margin-top:16px; }
+  .revise-row input{ flex:1; }
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:#151225; border:1px solid var(--primary-line); color: var(--text); font-size:13px;
+    padding:10px 18px; border-radius:100px; transition: all .25s; pointer-events:none; z-index:50;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .alert{ font-size:13px; border-radius:10px; padding:12px 14px; margin-top:12px; border:1px solid; line-height:1.6; }
+  .alert-error{ background: rgba(248,113,113,0.09); border-color: rgba(248,113,113,0.3); color:#FECACA; }
+  .alert-info{ background: var(--accent-soft); border-color: var(--accent-line); color:#CFFAFE; }
+
+  .spinner{ width:15px; height:15px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); border-top-color:#F8FAFC; animation:spin .7s linear infinite; display:inline-block; }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  /* guide view */
+  .guide h2.g-title{ font-family: var(--font-display); font-size:30px; margin: 6px 0 4px; }
+  .guide .lead{ color: var(--text-muted); font-size:14px; margin-bottom:24px; max-width:600px; line-height:1.7; }
+  .step{ display:grid; grid-template-columns: 40px 1fr; gap:16px; padding: 16px 0; border-top:1px solid var(--line-neutral); }
+  .step:first-of-type{ border-top:none; }
+  .step .num{ font-family: var(--font-mono); color: var(--primary-2); font-size:20px; }
+  .step h4{ margin:0 0 6px; font-size:15px; }
+  .step p{ margin:0; font-size:13.5px; color: var(--text-muted); line-height:1.7; }
+  .step a{ color: var(--accent-2); }
+  .tag-ref{ display:grid; grid-template-columns: 130px 1fr; gap:10px; font-size:13px; padding:9px 0; border-top:1px solid var(--line-neutral); }
+  .tag-ref span.k{ font-family: var(--font-mono); color: var(--primary-2); }
+  .tag-ref span.v{ color: var(--text-muted); }
+
+  footer.foot{ margin-top: 50px; text-align:center; color: var(--text-dim); font-size:12px; font-family: var(--font-mono); }
+
+  /* gate overlay — connect API key + choose models before entering the app */
+  .shell.locked{ display:none; }
+  .gate-overlay{
+    position:fixed; inset:0; z-index:200; display:flex; align-items:flex-start; justify-content:center;
+    padding: 32px 16px 60px; overflow-y:auto;
+    background: radial-gradient(900px 520px at 10% -10%, rgba(168,85,247,0.14) 0%, transparent 60%), rgba(6,5,14,0.92);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .gate-overlay.hidden{ display:none; }
+  .gate-card{
+    width:100%; max-width: 560px; margin-top: 4vh;
+    background: linear-gradient(165deg, var(--panel-a), var(--panel-b));
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--primary-line);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 30px 60px -20px rgba(0,0,0,0.7);
+    border-radius: var(--radius);
+    padding: 26px 24px 28px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .rec-dot, .waveform span, .dot.pending, #generateBtn{ animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell locked" id="mainShell">
+
+  <header class="hero">
+    <div class="rec-row">
+      <span class="rec-dot"></span>
+      <span class="rec-label">Session live — Gemini connected client-side</span>
+      <button class="btn-icon" id="reopenGateBtn" type="button" style="margin-left:auto; display:none;">⚙ API / โมเดล</button>
+    </div>
+    <h1>AI SONGWRITING<br>STUDIO</h1>
+    <p class="tag">ใส่เรื่องราว แนวเพลง อารมณ์ และโครงสร้างที่ต้องการ แล้วให้ AI ช่วยแต่งเนื้อเพลงพร้อม tag โครงสร้างและ style prompt สำหรับวางลง Suno ได้ทันที</p>
+    <div class="waveform" aria-hidden="true">
+      <span style="height:60%; animation-delay:0s"></span><span style="height:90%; animation-delay:.1s"></span>
+      <span style="height:40%; animation-delay:.2s"></span><span style="height:100%; animation-delay:.3s"></span>
+      <span style="height:55%; animation-delay:.4s"></span><span style="height:75%; animation-delay:.5s"></span>
+      <span style="height:35%; animation-delay:.6s"></span><span style="height:85%; animation-delay:.7s"></span>
+      <span style="height:50%; animation-delay:.8s"></span><span style="height:65%; animation-delay:.9s"></span>
+      <span style="height:30%; animation-delay:1s"></span><span style="height:95%; animation-delay:1.1s"></span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="app">แต่งเพลง</button>
+    <button class="tab-btn" data-tab="guide">คู่มือการใช้งาน</button>
+  </nav>
+
+  <!-- ============= APP VIEW ============= -->
+  <div class="view active" id="view-app">
+
+    <!-- AUTOSAVE STATUS -->
+    <section class="panel" style="padding-top:16px; padding-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div class="key-status" style="margin:0;">
+          <span class="dot ok"></span>
+          <span id="autosaveStatusText">ข้อมูลในฟอร์ม (เรื่องราว/แนวเพลง/โครงสร้าง/ผลลัพธ์ล่าสุด/โมเดลที่เลือก) จะถูกบันทึกอัตโนมัติ รีเฟรชหน้าแล้วไม่หาย</span>
+        </div>
+        <button class="btn btn-small btn-ghost" id="clearSavedBtn" type="button">ล้างข้อมูลที่บันทึกไว้ทั้งหมด</button>
+      </div>
+    </section>
+
+    <!-- SONGWRITING FORM -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="n">02</span>เรื่องราวและทิศทางเพลง</h2>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="storyInput">Prompt / เรื่องราวที่อยากเล่า</label>
+        <textarea id="storyInput" placeholder="เช่น เพลงเกี่ยวกับการกลับไปเยี่ยมบ้านเกิดหลังไม่ได้กลับมา 5 ปี ความรู้สึกคิดถึงแต่ก็รู้สึกแปลกหน้ากับที่ที่เคยคุ้นเคย..."></textarea>
+        <div class="field-hint">ยิ่งให้รายละเอียด (ตัวละคร ฉาก อารมณ์ จุดเปลี่ยน) เนื้อเพลงจะยิ่งมีมิติ</div>
+        <div class="template-row" style="margin-top:12px;">
+          <button class="btn btn-small btn-ghost" id="randomStoryBtn" type="button">🎲 สุ่มเรื่องราวทั้งหมด</button>
+          <button class="btn btn-small btn-ghost" id="expandStoryBtn" type="button">✨ ช่วยขยายไอเดียนี้</button>
+        </div>
+        <div id="storyAssistAlert"></div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">แนวเพลง (เลือกได้หลายอัน)</label>
+        <div class="chip-group" id="genreChips"></div>
+        <input type="text" id="genreCustom" placeholder="หรือพิมพ์แนวเพลงเพิ่มเติมเอง คั่นด้วยจุลภาค" style="margin-top:10px">
+      </div>
+
+      <div class="field">
+        <label class="field-label">อารมณ์เพลง (เลือกได้หลายอัน)</label>
+        <div class="chip-group" id="moodChips"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="field-label" for="lyricsLang">ภาษาของเนื้อเพลง</label>
+          <select id="lyricsLang">
+            <option value="ไทย">ไทย</option>
+            <option value="อังกฤษ">อังกฤษ (English)</option>
+            <option value="ไทยผสมอังกฤษ">ไทยผสมอังกฤษ (Thai-English mix)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="vocabStyle">โทนคำ / วิธีใช้ภาษา</label>
+          <select id="vocabStyle">
+            <option value="เป็นธรรมชาติ เข้าใจง่าย">เป็นธรรมชาติ เข้าใจง่าย</option>
+            <option value="เชิงกวี ใช้อุปมาอุปไมย">เชิงกวี ใช้อุปมาอุปไมย</option>
+            <option value="ภาษาปาก สตรีท ตรงไปตรงมา">ภาษาปาก สตรีท ตรงไปตรงมา</option>
+            <option value="เล่าเรื่องเป็นฉากๆ แบบ storytelling">เล่าเรื่องเป็นฉากๆ แบบ storytelling</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="rhymeStyle">รูปแบบสัมผัส (Rhyme)</label>
+        <select id="rhymeStyle">
+          <option value="ให้ AI เลือกให้เหมาะสมเอง">ให้ AI เลือกให้เหมาะสมเอง</option>
+          <option value="สัมผัสท้ายบรรทัดคู่ (AABB)">สัมผัสท้ายบรรทัดคู่ (AABB)</option>
+          <option value="สัมผัสสลับ (ABAB)">สัมผัสสลับ (ABAB)</option>
+          <option value="กลอนเปล่า ไม่บังคับสัมผัส">กลอนเปล่า ไม่บังคับสัมผัส</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- STRUCTURE BUILDER -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="n">03</span>โครงสร้างเพลง</h2>
+      </div>
+      <p class="panel-sub">จัดลำดับท่อนเพลงเหมือนแทร็คในคอนโซล — ลำดับที่เห็นคือลำดับที่ AI จะแต่งตาม และจะใส่ tag ให้ตรงกับที่ Suno รู้จัก</p>
+
+      <div class="template-row">
+        <button class="btn btn-small btn-ghost" data-template="pop">โครงสร้างป๊อปมาตรฐาน</button>
+        <button class="btn btn-small btn-ghost" data-template="ballad">บัลลาด</button>
+        <button class="btn btn-small btn-ghost" data-template="hiphop">ฮิปฮอป</button>
+        <button class="btn btn-small btn-ghost" data-template="edm">EDM Build</button>
+        <button class="btn btn-small btn-ghost" id="suggestStructureBtn" type="button">🧩 ให้ AI แนะนำโครงสร้าง</button>
+      </div>
+      <div id="structureAssistAlert"></div>
+
+      <div class="track-list" id="trackList"></div>
+
+      <div class="add-track-row">
+        <select id="newTrackType">
+          <option value="Intro">Intro</option>
+          <option value="Verse">Verse</option>
+          <option value="Pre-Chorus">Pre-Chorus</option>
+          <option value="Chorus">Chorus</option>
+          <option value="Bridge">Bridge</option>
+          <option value="Hook">Hook</option>
+          <option value="Refrain">Refrain</option>
+          <option value="Outro">Outro</option>
+        </select>
+        <button class="btn btn-small btn-ghost" id="addTrackBtn" type="button">+ เพิ่มท่อน</button>
+      </div>
+    </section>
+
+    <!-- GENERATE -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="n">04</span>สร้างเพลง</h2>
+      </div>
+      <button class="btn btn-primary" id="generateBtn" type="button" style="font-size:15px; padding:13px 26px;">● แต่งเนื้อเพลงตอนนี้</button>
+      <div id="genAlert"></div>
+    </section>
+
+    <!-- OUTPUT -->
+    <section class="panel" id="outputPanel">
+      <div class="panel-head">
+        <h2><span class="n">05</span>ผลลัพธ์ / Lyric Sheet</h2>
+      </div>
+      <div id="outputArea">
+        <div class="empty-out">ยังไม่มีเพลง — กรอกข้อมูลด้านบนแล้วกด "แต่งเนื้อเพลงตอนนี้"</div>
+      </div>
+    </section>
+
+    <!-- EXPORT: SRT / YOUTUBE -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span class="n">06</span>Export สำหรับยูทูป</h2>
+      </div>
+      <p class="panel-sub">ต้องแต่งเพลงในขั้นตอน 05 ให้เสร็จก่อน ถึงจะสร้างไฟล์คำบรรยายและคำโปรยได้</p>
+
+      <div class="field">
+        <label class="field-label" for="songDuration">ความยาวเพลงโดยประมาณ (วินาที) — ใช้กะจังหวะคำบรรยาย SRT</label>
+        <input type="text" id="songDuration" value="180" style="max-width:140px">
+      </div>
+
+      <div class="template-row">
+        <button class="btn btn-small btn-primary" id="genSrtBtn" type="button" disabled>🎬 สร้างไฟล์คำบรรยาย SRT</button>
+        <button class="btn btn-small btn-primary" id="genYtBtn" type="button" disabled>📝 สร้างคำโปรยยูทูป</button>
+      </div>
+      <div id="exportAlert"></div>
+
+      <div id="srtOutBlock" style="display:none;" class="out-block">
+        <div class="out-head"><h3>ไฟล์ SRT</h3>
+          <span>
+            <button class="btn-icon" id="copySrtBtn">คัดลอก</button>
+            <button class="btn-icon" id="downloadSrtBtn">ดาวน์โหลด .srt</button>
+          </span>
+        </div>
+        <div class="lyrics-box" id="srtText"></div>
+      </div>
+
+      <div id="ytOutBlock" style="display:none;" class="out-block">
+        <div class="out-head"><h3>ชื่อคลิปแนะนำ</h3><button class="btn-icon" data-copy-yt="titles">คัดลอก</button></div>
+        <div class="style-box" id="ytTitles"></div>
+        <div class="out-head" style="margin-top:16px;"><h3>คำอธิบายวิดีโอ</h3><button class="btn-icon" data-copy-yt="desc">คัดลอก</button></div>
+        <div class="lyrics-box" id="ytDescription"></div>
+        <div class="out-head" style="margin-top:16px;"><h3>แฮชแท็ก</h3><button class="btn-icon" data-copy-yt="tags">คัดลอก</button></div>
+        <div class="style-box" id="ytTags"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============= GUIDE VIEW ============= -->
+  <div class="view guide" id="view-guide">
+    <section class="panel">
+      <h2 class="g-title">คู่มือการใช้งาน</h2>
+      <p class="lead">ขั้นตอนตั้งแต่ขอ API key ไปจนถึงเอาเนื้อเพลงไปวางใน Suno</p>
+
+      <div class="step">
+        <div class="num">01</div>
+        <div>
+          <h4>ขอ Gemini API key ฟรี</h4>
+          <p>ไปที่ <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> ล็อกอินด้วยบัญชี Google แล้วกด "Create API key" คัดลอกรหัสที่ขึ้นต้นด้วย <code>AIza</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <div>
+          <h4>วาง key แล้วทดสอบการเชื่อมต่อ</h4>
+          <p>กลับมาที่แท็บ "แต่งเพลง" วาง key ลงในช่องด้านบนสุด แล้วกด "ทดสอบการเชื่อมต่อ" — ถ้าจุดสถานะเป็นสีเขียวแปลว่าเชื่อมต่อสำเร็จ key จะอยู่ในเบราว์เซอร์ของคุณเท่านั้นและหายไปเมื่อรีเฟรชหน้า</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <div>
+          <h4>ใส่เรื่องราวและทิศทางเพลง</h4>
+          <p>เขียน prompt หรือเรื่องราวที่อยากเล่าให้ละเอียด เลือกแนวเพลงและอารมณ์ได้หลายอัน เลือกภาษาเนื้อเพลง โทนคำ และรูปแบบสัมผัสตามที่ต้องการ</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">04</div>
+        <div>
+          <h4>จัดโครงสร้างเพลง</h4>
+          <p>ใช้เทมเพลตสำเร็จรูป หรือเพิ่ม/ลบ/สลับลำดับท่อนเอง (Intro, Verse, Chorus, Bridge, Outro ฯลฯ) ลำดับที่จัดไว้จะเป็นลำดับที่ AI แต่งตามเป๊ะๆ</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">05</div>
+        <div>
+          <h4>กดแต่งเนื้อเพลง</h4>
+          <p>AI จะสร้างชื่อเพลง, style prompt (สำหรับใส่ในช่อง "Style of Music" ของ Suno) และเนื้อเพลงที่มี tag โครงสร้างกำกับให้ครบ</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">06</div>
+        <div>
+          <h4>คัดลอกไปวางใน Suno</h4>
+          <p>เปิด <a href="https://suno.com" target="_blank" rel="noopener">suno.com</a> → โหมด Custom → วาง "style prompt" ลงช่อง Style of Music และวางเนื้อเพลงทั้งก้อน (พร้อม tag) ลงช่อง Lyrics ได้เลย</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">07</div>
+        <div>
+          <h4>ปรับแก้เนื้อเพลง</h4>
+          <p>ถ้ายังไม่ถูกใจ ใช้ช่อง "ปรับแก้เนื้อเพลง" ท้ายผลลัพธ์ พิมพ์สิ่งที่อยากแก้ เช่น "ทำท่อน Bridge ให้เศร้ากว่านี้" แล้วกดส่ง AI จะแก้จากเวอร์ชันล่าสุดให้</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">08</div>
+        <div>
+          <h4>ใช้ตัวช่วยคิดเรื่องราว/โครงสร้าง (ไม่บังคับ)</h4>
+          <p>ถ้ายังไม่มีไอเดีย กดปุ่ม "🎲 สุ่มเรื่องราวทั้งหมด" ให้ AI คิดเรื่องราว แนวเพลง และอารมณ์ให้เลย หรือพิมพ์ไอเดียคร่าวๆ แล้วกด "✨ ช่วยขยายไอเดียนี้" ส่วนโครงสร้างเพลงก็มีปุ่ม "🧩 ให้ AI แนะนำโครงสร้าง" ให้เลือกใช้ได้เช่นกัน</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="num">09</div>
+        <div>
+          <h4>สร้าง SRT และคำโปรยยูทูป (ไม่บังคับ)</h4>
+          <p>หลังแต่งเพลงเสร็จในขั้นตอน 05 เลื่อนลงไปที่ขั้นตอน 06 ใส่ความยาวเพลงโดยประมาณเป็นวินาที แล้วกด "🎬 สร้างไฟล์คำบรรยาย SRT" เพื่อดาวน์โหลดไฟล์ .srt สำหรับทำวิดีโอเนื้อเพลง หรือกด "📝 สร้างคำโปรยยูทูป" เพื่อได้ชื่อคลิป คำอธิบาย และแฮชแท็กพร้อมใช้</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2 style="font-family:var(--font-display); font-size:22px;">โมเดล AI ที่ใช้ในแต่ละส่วน</h2></div>
+      <div class="tag-ref"><span class="k">แต่งเนื้อเพลงหลัก</span><span class="v">อ่านจากช่อง "โมเดลหลัก" ในขั้นตอน 01.5 — ปรับได้เองในหน้าเว็บ ไม่ต้องแก้โค้ด</span></div>
+      <div class="tag-ref"><span class="k">สุ่ม/ขยายเรื่องราว, แนะนำโครงสร้าง</span><span class="v">อ่านจากช่อง "โมเดลตัวช่วย" — เลือกรุ่นที่เบากว่าได้เพื่อความเร็ว</span></div>
+      <div class="tag-ref"><span class="k">SRT / คำโปรยยูทูป</span><span class="v">อ่านจากช่อง "โมเดล Export" — งานแปลงรูปแบบ ไม่จำเป็นต้องใช้รุ่นสูงสุด</span></div>
+      <div class="tag-ref"><span class="k">ค่าเริ่มต้น</span><span class="v">gemini-2.0-flash ทั้งสามช่อง — เปลี่ยนได้ทุกเมื่อในขั้นตอน 01.5</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2 style="font-family:var(--font-display); font-size:22px;">ความหมายของ tag โครงสร้าง</h2></div>
+      <div class="tag-ref"><span class="k">[Intro]</span><span class="v">ท่อนเปิดเพลง มักไม่มีเนื้อร้องหรือมีสั้นๆ</span></div>
+      <div class="tag-ref"><span class="k">[Verse]</span><span class="v">ท่อนดำเนินเรื่อง เล่ารายละเอียด เนื้อหาต่างกันในแต่ละรอบ</span></div>
+      <div class="tag-ref"><span class="k">[Pre-Chorus]</span><span class="v">ท่อนเชื่อมก่อนเข้าท่อนฮุค สร้างอารมณ์ให้พุ่งขึ้น</span></div>
+      <div class="tag-ref"><span class="k">[Chorus]</span><span class="v">ท่อนฮุค ใจความหลักของเพลง ซ้ำเดิมทุกรอบ</span></div>
+      <div class="tag-ref"><span class="k">[Bridge]</span><span class="v">ท่อนเปลี่ยนบรรยากาศ มักอยู่ก่อนฮุคสุดท้าย</span></div>
+      <div class="tag-ref"><span class="k">[Outro]</span><span class="v">ท่อนปิดเพลง</span></div>
+      <div class="tag-ref"><span class="k">Style prompt</span><span class="v">คำอธิบายแนวเพลง/อารมณ์/เสียงร้อง/เครื่องดนตรีสั้นๆ เป็นภาษาอังกฤษ ใช้กรอกในช่อง Style of Music ของ Suno</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2 style="font-family:var(--font-display); font-size:22px;">คำถามที่พบบ่อย</h2></div>
+      <div class="step"><div class="num">?</div><div><h4>key ของฉันปลอดภัยไหม</h4><p>หน้านี้เรียก Gemini API ตรงจากเบราว์เซอร์ของคุณไปยัง Google โดยไม่มีเซิร์ฟเวอร์กลาง ค่าเริ่มต้นคือไม่บันทึก key ไว้ที่ใดหลังปิดหรือรีเฟรชหน้า ถ้าติ๊ก "จำ key ไว้ในเครื่องนี้" key จะถูกเก็บไว้ใน localStorage ของเบราว์เซอร์บนอุปกรณ์นี้เท่านั้น ไม่ส่งไปที่อื่น แต่ถ้าใช้เครื่องสาธารณะ/ร่วมกับคนอื่นไม่ควรติ๊กไว้</p></div></div>
+      <div class="step"><div class="num">?</div><div><h4>ทำไมข้อมูล/เพลงที่แต่งไว้หายเมื่อรีเฟรช</h4><p>ปกติแล้วหน้านี้บันทึกฟอร์มและเพลงล่าสุดอัตโนมัติ (autosave) รีเฟรชแล้วไม่ควรหาย — ถ้าหายจริง อาจเป็นเพราะเบราว์เซอร์อยู่ในโหมดส่วนตัว/ไม่รองรับ localStorage หรือมีการกดปุ่ม "ล้างข้อมูลที่บันทึกไว้ทั้งหมด" ไปก่อนหน้า</p></div></div>
+      <div class="step"><div class="num">?</div><div><h4>เปิดไฟล์แล้วเชื่อมต่อไม่ได้</h4><p>เบราว์เซอร์บางตัวจำกัดการยิง request จากไฟล์ที่เปิดตรงๆ (file://) แนะนำให้อัปโหลดไฟล์นี้ขึ้นโฮสต์ฟรี เช่น GitHub Pages หรือ Netlify แล้วเปิดผ่านลิงก์ https แทน</p></div></div>
+      <div class="step"><div class="num">?</div><div><h4>ขึ้น error "model not found" หรือ "no longer available"</h4><p>Google เปลี่ยน/ถอดชื่อโมเดล Gemini บ่อยมาก ให้เข้า Google AI Studio ดูรายชื่อโมเดลที่ใช้ได้จริงในบัญชีคุณตอนนี้ แล้วกดปุ่ม "⚙ API / โมเดล" มุมขวาบนของหน้าแรกเพื่อแก้ชื่อโมเดล ไม่ต้องแก้โค้ด ระบบจะจำค่าไว้ให้อัตโนมัติ</p></div></div>
+    </section>
+  </div>
+
+  <footer class="foot">AI SONGWRITING STUDIO — powered by your own Gemini API key</footer>
+</div>
+
+<!-- ============= GATE: connect API key + choose models before entering the app ============= -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <div class="rec-row" style="margin-bottom:14px;">
+      <span class="rec-dot"></span>
+      <span class="rec-label">ก่อนเริ่มใช้งาน</span>
+    </div>
+    <h1 style="font-family:var(--font-display); font-size:clamp(30px,7vw,40px); letter-spacing:0.02em; line-height:0.95; margin:0 0 6px; background:linear-gradient(100deg,#F8FAFC 0%, var(--primary-2) 45%, var(--accent-2) 100%); -webkit-background-clip:text; background-clip:text; color:transparent;">เชื่อมต่อก่อนแต่งเพลง</h1>
+    <p style="font-size:13.5px; color:var(--text-muted); margin:0 0 20px; line-height:1.6;">ใส่ Gemini API key แล้วทดสอบให้สำเร็จ ถึงจะเข้าใช้งานหน้าแต่งเพลงได้ ยังไม่มี key? ขอฟรีได้ที่ <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-2)">aistudio.google.com/apikey ↗</a></p>
+
+    <div class="panel-head" style="margin-bottom:12px;">
+      <h2><span class="n">01</span>เชื่อมต่อ Gemini API</h2>
+    </div>
+    <p class="panel-sub">ค่าเริ่มต้นคือเก็บ key ไว้ในหน่วยความจำของเบราว์เซอร์ระหว่างเซสชันนี้เท่านั้นและจะหายเมื่อรีเฟรช ถ้าไม่อยากพิมพ์ใหม่ทุกครั้ง ให้ติ๊ก "จำ key ไว้ในเครื่องนี้" ด้านล่าง (ไม่แนะนำถ้าใช้เครื่องสาธารณะ/เครื่องที่ใช้ร่วมกับคนอื่น)</p>
+    <div class="key-row">
+      <input type="password" id="apiKey" placeholder="วาง Gemini API key ที่นี่ (ขึ้นต้นด้วย AIza...)" autocomplete="off">
+      <button class="btn btn-ghost" id="toggleKeyVisibility" type="button">แสดง</button>
+    </div>
+    <button class="btn btn-primary" id="testKeyBtn" type="button" style="margin-top:10px; width:100%; justify-content:center;">ทดสอบการเชื่อมต่อ</button>
+    <div class="key-status">
+      <span class="dot" id="keyDot"></span>
+      <span id="keyStatusText">ยังไม่ได้ทดสอบการเชื่อมต่อ</span>
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--text-muted); cursor:pointer;">
+      <input type="checkbox" id="rememberKey" style="width:auto;">
+      จำ key ไว้ในเครื่องนี้ (บันทึกลง localStorage ของเบราว์เซอร์)
+    </label>
+    <div id="keyAlert"></div>
+
+    <div class="panel-head" style="margin-top:24px; margin-bottom:12px;">
+      <h2><span class="n">01.5</span>เลือกโมเดลที่ใช้</h2>
+    </div>
+    <p class="panel-sub" id="modelDetectStatus">ทดสอบการเชื่อมต่อให้สำเร็จก่อน ระบบจะดึงรายชื่อโมเดลที่ใช้งานได้จริงกับ key นี้มาให้เลือกอัตโนมัติ</p>
+
+    <div class="field">
+      <label class="field-label" for="primaryModelSelect">โมเดลหลัก (แต่งเนื้อเพลง + ปรับแก้)</label>
+      <div style="display:flex; gap:8px;">
+        <select id="primaryModelSelect" style="flex:1;"><option value="gemini-2.0-flash">gemini-2.0-flash</option></select>
+        <button class="btn-icon" id="cyclePrimaryBtn" type="button" title="ลองโมเดลตัวถัดไปในลิสต์">🔀</button>
+      </div>
+      <input type="text" id="primaryModelCustom" style="display:none; margin-top:6px;" placeholder="พิมพ์ model id เอง">
+    </div>
+    <div class="field">
+      <label class="field-label" for="assistModelSelect">โมเดลตัวช่วย (เรื่องราว/โครงสร้าง)</label>
+      <div style="display:flex; gap:8px;">
+        <select id="assistModelSelect" style="flex:1;"><option value="gemini-2.0-flash">gemini-2.0-flash</option></select>
+        <button class="btn-icon" id="cycleAssistBtn" type="button" title="ลองโมเดลตัวถัดไปในลิสต์">🔀</button>
+      </div>
+      <input type="text" id="assistModelCustom" style="display:none; margin-top:6px;" placeholder="พิมพ์ model id เอง">
+    </div>
+    <div class="field">
+      <label class="field-label" for="exportModelSelect">โมเดล Export (SRT / คำโปรยยูทูป)</label>
+      <div style="display:flex; gap:8px;">
+        <select id="exportModelSelect" style="flex:1;"><option value="gemini-2.0-flash">gemini-2.0-flash</option></select>
+        <button class="btn-icon" id="cycleExportBtn" type="button" title="ลองโมเดลตัวถัดไปในลิสต์">🔀</button>
+      </div>
+      <input type="text" id="exportModelCustom" style="display:none; margin-top:6px;" placeholder="พิมพ์ model id เอง">
+    </div>
+    <div class="field-hint" style="margin-bottom:18px;">หลังเชื่อมต่อสำเร็จ ระบบจะดึงรายชื่อโมเดลจริงจากบัญชีคุณและเลือกตัวที่น่าจะเหมาะสุดให้อัตโนมัติ — ถ้าตัวที่เลือกใช้ไม่ได้ (error/quota) กด 🔀 เพื่อลองตัวถัดไปในลิสต์ หรือเลือก "พิมพ์เอง..." ท้ายลิสต์เพื่อใส่ชื่อโมเดลเองก็ได้</div>
+
+    <button class="btn btn-primary" id="enterAppBtn" type="button" disabled style="width:100%; justify-content:center; font-size:15px; padding:13px 26px;">ทดสอบการเชื่อมต่อให้สำเร็จก่อน</button>
+    <button class="btn btn-ghost btn-small" id="closeGateBtn" type="button" style="width:100%; justify-content:center; margin-top:10px; display:none;">ปิดหน้าต่างนี้</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- constants ---------------- */
+  var GENRES = ["Pop","R&B","Hip-Hop","Rock","Ballad","EDM","Indie","Jazz","Folk","Lo-fi","City Pop","ลูกทุ่ง","ลูกกรุง","เพื่อชีวิต","Bossa Nova","Synthwave","Acoustic"];
+  var MOODS = ["มีความสุข","เศร้า","คิดถึง","หวังดี","ฮึกเหิม","ผ่อนคลาย","โรแมนติก","มืดหม่น","สนุกคึกคัก","อบอุ่น","เหงา","ปลดปล่อย"];
+  var TEMPLATES = {
+    pop:   ["Intro","Verse","Chorus","Verse","Chorus","Bridge","Chorus","Outro"],
+    ballad:["Intro","Verse","Pre-Chorus","Chorus","Verse","Pre-Chorus","Chorus","Bridge","Chorus","Outro"],
+    hiphop:["Intro","Verse","Hook","Verse","Hook","Bridge","Hook","Outro"],
+    edm:   ["Intro","Verse","Pre-Chorus","Chorus","Verse","Pre-Chorus","Chorus","Bridge","Chorus","Outro"]
+  };
+
+  /* ---------------- state ---------------- */
+  var state = {
+    apiKey: "",
+    keyVerified: false,
+    genres: new Set(),
+    moods: new Set(),
+    tracks: TEMPLATES.pop.slice(),
+    lastResult: null,   // {title, style_prompt, lyrics, notes}
+    conversation: [],   // history of {role, text} for revisions
+    availableModels: [] // model ids confirmed usable with the connected key
+  };
+
+  /* ---------------- helpers ---------------- */
+  function $(sel){ return document.querySelector(sel); }
+  function $all(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function esc(s){ return (s||"").replace(/[&<>]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
+
+  function toast(msg){
+    var t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._tm);
+    toast._tm = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  function copyText(text){
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(function(){ toast("คัดลอกแล้ว"); }).catch(function(){ fallbackCopy(text); });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text){
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand("copy"); toast("คัดลอกแล้ว"); }catch(e){ toast("คัดลอกไม่สำเร็จ ลองเลือกข้อความเอง"); }
+    document.body.removeChild(ta);
+  }
+
+  function showAlert(containerSel, type, msg){
+    var el = $(containerSel);
+    el.innerHTML = '<div class="alert alert-' + type + '">' + esc(msg) + '</div>';
+  }
+  function clearAlert(containerSel){ $(containerSel).innerHTML = ""; }
+
+  /* ---------------- persistence (draft autosave + optional remembered key) ---------------- */
+  var DRAFT_KEY = "ai-songwriting-studio:draft:v1";
+  var KEY_STORAGE_KEY = "ai-songwriting-studio:apikey:v1";
+  var saveDraftTimer = null;
+
+  function storageAvailable(){
+    try{ var t = "__t__"; window.localStorage.setItem(t, "1"); window.localStorage.removeItem(t); return true; }
+    catch(e){ return false; }
+  }
+  var STORAGE_OK = storageAvailable();
+
+  function collectDraft(){
+    return {
+      story: $("#storyInput") ? $("#storyInput").value : "",
+      genreCustom: $("#genreCustom") ? $("#genreCustom").value : "",
+      genres: Array.from(state.genres),
+      moods: Array.from(state.moods),
+      lyricsLang: $("#lyricsLang") ? $("#lyricsLang").value : undefined,
+      vocabStyle: $("#vocabStyle") ? $("#vocabStyle").value : undefined,
+      rhymeStyle: $("#rhymeStyle") ? $("#rhymeStyle").value : undefined,
+      songDuration: $("#songDuration") ? $("#songDuration").value : undefined,
+      primaryModelSelect: $("#primaryModelSelect") ? $("#primaryModelSelect").value : undefined,
+      primaryModelCustom: $("#primaryModelCustom") ? $("#primaryModelCustom").value : undefined,
+      assistModelSelect: $("#assistModelSelect") ? $("#assistModelSelect").value : undefined,
+      assistModelCustom: $("#assistModelCustom") ? $("#assistModelCustom").value : undefined,
+      exportModelSelect: $("#exportModelSelect") ? $("#exportModelSelect").value : undefined,
+      exportModelCustom: $("#exportModelCustom") ? $("#exportModelCustom").value : undefined,
+      availableModels: state.availableModels || [],
+      tracks: state.tracks,
+      lastResult: state.lastResult,
+      conversation: state.conversation
+    };
+  }
+
+  function saveDraftNow(){
+    if(!STORAGE_OK) return;
+    try{ window.localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft())); }catch(e){ /* quota / private mode — silently skip */ }
+  }
+  function saveDraft(){
+    clearTimeout(saveDraftTimer);
+    saveDraftTimer = setTimeout(saveDraftNow, 400);
+  }
+  function loadDraft(){
+    if(!STORAGE_OK) return null;
+    try{
+      var raw = window.localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  function clearAllSaved(){
+    if(STORAGE_OK){
+      try{ window.localStorage.removeItem(DRAFT_KEY); window.localStorage.removeItem(KEY_STORAGE_KEY); }catch(e){}
+    }
+  }
+
+  $("#clearSavedBtn").addEventListener("click", function(){
+    if(!confirm("ล้างข้อมูลที่บันทึกไว้ในเบราว์เซอร์นี้ทั้งหมด (รวม API key ที่จำไว้) ใช่หรือไม่?")) return;
+    clearAllSaved();
+    toast("ล้างข้อมูลที่บันทึกไว้แล้ว");
+    location.reload();
+  });
+
+  /* ---------------- tabs ---------------- */
+  $all(".tab-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      $all(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      var tab = btn.getAttribute("data-tab");
+      $("#view-app").classList.toggle("active", tab === "app");
+      $("#view-guide").classList.toggle("active", tab === "guide");
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+  });
+
+  /* ---------------- chips ---------------- */
+  function renderChips(containerId, items, targetSet){
+    var el = $(containerId);
+    el.innerHTML = "";
+    items.forEach(function(item){
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      if(targetSet.has(item)) chip.classList.add("active");
+      chip.textContent = item;
+      chip.addEventListener("click", function(){
+        if(targetSet.has(item)){ targetSet.delete(item); chip.classList.remove("active"); }
+        else { targetSet.add(item); chip.classList.add("active"); }
+        saveDraft();
+      });
+      el.appendChild(chip);
+    });
+  }
+
+  /* ---------------- restore saved draft (if any) before first render ---------------- */
+  var savedDraft = loadDraft();
+  if(savedDraft){
+    if(savedDraft.story) $("#storyInput").value = savedDraft.story;
+    if(savedDraft.genreCustom) $("#genreCustom").value = savedDraft.genreCustom;
+    (savedDraft.genres || []).forEach(function(g){ state.genres.add(g); });
+    (savedDraft.moods || []).forEach(function(m){ state.moods.add(m); });
+    if(savedDraft.lyricsLang) $("#lyricsLang").value = savedDraft.lyricsLang;
+    if(savedDraft.vocabStyle) $("#vocabStyle").value = savedDraft.vocabStyle;
+    if(savedDraft.rhymeStyle) $("#rhymeStyle").value = savedDraft.rhymeStyle;
+    if(savedDraft.songDuration) $("#songDuration").value = savedDraft.songDuration;
+    if(Array.isArray(savedDraft.availableModels) && savedDraft.availableModels.length){
+      state.availableModels = savedDraft.availableModels;
+      populateSelect("#primaryModelSelect", rankForQuality(savedDraft.availableModels));
+      populateSelect("#assistModelSelect", rankForSpeed(savedDraft.availableModels));
+      populateSelect("#exportModelSelect", rankForSpeed(savedDraft.availableModels));
+    }
+    if(savedDraft.primaryModelSelect){ ensureOption($("#primaryModelSelect"), savedDraft.primaryModelSelect); $("#primaryModelSelect").value = savedDraft.primaryModelSelect; }
+    if(savedDraft.primaryModelCustom) $("#primaryModelCustom").value = savedDraft.primaryModelCustom;
+    if(savedDraft.assistModelSelect){ ensureOption($("#assistModelSelect"), savedDraft.assistModelSelect); $("#assistModelSelect").value = savedDraft.assistModelSelect; }
+    if(savedDraft.assistModelCustom) $("#assistModelCustom").value = savedDraft.assistModelCustom;
+    if(savedDraft.exportModelSelect){ ensureOption($("#exportModelSelect"), savedDraft.exportModelSelect); $("#exportModelSelect").value = savedDraft.exportModelSelect; }
+    if(savedDraft.exportModelCustom) $("#exportModelCustom").value = savedDraft.exportModelCustom;
+    $("#primaryModelCustom").style.display = $("#primaryModelSelect").value === "__custom__" ? "" : "none";
+    $("#assistModelCustom").style.display = $("#assistModelSelect").value === "__custom__" ? "" : "none";
+    $("#exportModelCustom").style.display = $("#exportModelSelect").value === "__custom__" ? "" : "none";
+    if(Array.isArray(savedDraft.tracks) && savedDraft.tracks.length){ state.tracks = savedDraft.tracks; }
+    if(savedDraft.lastResult){ state.lastResult = savedDraft.lastResult; }
+    if(Array.isArray(savedDraft.conversation)){ state.conversation = savedDraft.conversation; }
+  }
+
+  renderChips("#genreChips", GENRES, state.genres);
+  renderChips("#moodChips", MOODS, state.moods);
+
+  $all("#storyInput, #genreCustom, #lyricsLang, #vocabStyle, #rhymeStyle, #songDuration, #primaryModelCustom, #assistModelCustom, #exportModelCustom").forEach(function(el){
+    el.addEventListener("input", saveDraft);
+    el.addEventListener("change", saveDraft);
+  });
+
+  /* ---------------- structure builder ---------------- */
+  function renderTracks(){
+    var list = $("#trackList");
+    list.innerHTML = "";
+    state.tracks.forEach(function(type, idx){
+      var row = document.createElement("div");
+      row.className = "track-row";
+      row.setAttribute("data-type", type);
+      var numLabel = String(idx+1).padStart(2,"0");
+      row.innerHTML =
+        '<span class="track-num">' + numLabel + '</span>' +
+        '<span class="track-name">' + esc(type) + '</span>' +
+        '<span class="track-actions">' +
+          '<button type="button" data-act="up" title="เลื่อนขึ้น">↑</button>' +
+          '<button type="button" data-act="down" title="เลื่อนลง">↓</button>' +
+          '<button type="button" data-act="del" title="ลบ">✕</button>' +
+        '</span>';
+      row.querySelector('[data-act="up"]').addEventListener("click", function(){
+        if(idx > 0){ var tmp = state.tracks[idx-1]; state.tracks[idx-1] = state.tracks[idx]; state.tracks[idx] = tmp; renderTracks(); saveDraft(); }
+      });
+      row.querySelector('[data-act="down"]').addEventListener("click", function(){
+        if(idx < state.tracks.length - 1){ var tmp = state.tracks[idx+1]; state.tracks[idx+1] = state.tracks[idx]; state.tracks[idx] = tmp; renderTracks(); saveDraft(); }
+      });
+      row.querySelector('[data-act="del"]').addEventListener("click", function(){
+        state.tracks.splice(idx, 1); renderTracks(); saveDraft();
+      });
+      list.appendChild(row);
+    });
+    if(state.tracks.length === 0){
+      list.innerHTML = '<div class="empty-out">ยังไม่มีท่อนเพลง — เพิ่มท่อนหรือเลือกเทมเพลตด้านบน</div>';
+    }
+  }
+  renderTracks();
+
+  $("#addTrackBtn").addEventListener("click", function(){
+    var type = $("#newTrackType").value;
+    state.tracks.push(type);
+    renderTracks();
+    saveDraft();
+  });
+
+  $all("[data-template]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var key = btn.getAttribute("data-template");
+      state.tracks = TEMPLATES[key].slice();
+      renderTracks();
+      saveDraft();
+      toast("ใช้เทมเพลต: " + btn.textContent);
+    });
+  });
+
+  /* ---------------- restore last generated result, if saved ---------------- */
+  if(state.lastResult){
+    renderResult(state.lastResult);
+    $("#genSrtBtn").disabled = false;
+    $("#genYtBtn").disabled = false;
+  }
+
+
+  /* ---------------- api key ---------------- */
+  var savedKey = STORAGE_OK ? (function(){ try{ return window.localStorage.getItem(KEY_STORAGE_KEY); }catch(e){ return null; } })() : null;
+  if(savedKey){
+    $("#apiKey").value = savedKey;
+    $("#rememberKey").checked = true;
+    state.apiKey = savedKey;
+  }
+  $("#apiKey").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); testConnection(); }
+  });
+  $("#rememberKey").addEventListener("change", function(){
+    if(!STORAGE_OK){ toast("เบราว์เซอร์นี้ไม่รองรับการบันทึกข้อมูล (อาจอยู่ในโหมดส่วนตัว)"); this.checked = false; return; }
+    if(this.checked){
+      var k = $("#apiKey").value.trim();
+      if(k){ try{ window.localStorage.setItem(KEY_STORAGE_KEY, k); toast("จำ key นี้ไว้ในเครื่องแล้ว"); }catch(e){} }
+    } else {
+      try{ window.localStorage.removeItem(KEY_STORAGE_KEY); toast("เลิกจำ key แล้ว"); }catch(e){}
+    }
+  });
+
+  $("#toggleKeyVisibility").addEventListener("click", function(){
+    var input = $("#apiKey");
+    var showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    this.textContent = showing ? "แสดง" : "ซ่อน";
+  });
+
+  $("#testKeyBtn").addEventListener("click", function(){
+    testConnection();
+  });
+
+  function setKeyStatus(mode, text){
+    var dot = $("#keyDot");
+    dot.className = "dot" + (mode ? " " + mode : "");
+    $("#keyStatusText").textContent = text;
+  }
+
+  function testConnection(){
+    var key = $("#apiKey").value.trim();
+    clearAlert("#keyAlert");
+    if(!key){ showAlert("#keyAlert", "error", "กรุณาใส่ Gemini API key ก่อน"); return; }
+    state.apiKey = key;
+    setKeyStatus("pending", "กำลังทดสอบการเชื่อมต่อ...");
+    var url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + encodeURIComponent(key);
+    fetch(url).then(function(res){
+      if(!res.ok){ return res.text().then(function(t){ throw new Error("HTTP " + res.status + " — " + t.slice(0,200)); }); }
+      return res.json();
+    }).then(function(data){
+      state.keyVerified = true;
+      if($("#rememberKey").checked && STORAGE_OK){
+        try{ window.localStorage.setItem(KEY_STORAGE_KEY, key); }catch(e){}
+      }
+      setKeyStatus("pending", "เชื่อมต่อสำเร็จ กำลังหาโมเดลที่ใช้งานได้อัตโนมัติ...");
+      return fetchAndPopulateModels(key);
+    }).then(function(){
+      var usable = state.availableModels || [];
+      if(usable.length){
+        setKeyStatus("ok", "เชื่อมต่อสำเร็จ — พบโมเดลที่ใช้ได้ " + usable.length + " ตัว เลือกให้อัตโนมัติแล้ว");
+      } else {
+        setKeyStatus("ok", "เชื่อมต่อสำเร็จ (หาโมเดลอัตโนมัติไม่สำเร็จ ใช้ค่าเริ่มต้น gemini-2.0-flash ไปก่อน)");
+      }
+      var enterBtn = $("#enterAppBtn");
+      enterBtn.disabled = false;
+      enterBtn.textContent = "🚀 เข้าใช้งาน";
+      setTimeout(unlockApp, 700); // เชื่อมต่อสำเร็จ → พาเข้าใช้งานอัตโนมัติ (ยังกดปุ่มเองได้ทันทีถ้าไม่อยากรอ)
+    }).catch(function(err){
+      state.keyVerified = false;
+      setKeyStatus("bad", "เชื่อมต่อไม่สำเร็จ");
+      showAlert("#keyAlert", "error", "เชื่อมต่อไม่สำเร็จ: " + err.message + " — ตรวจสอบว่า key ถูกต้องและเปิดใช้งาน Generative Language API แล้ว");
+      $("#enterAppBtn").disabled = true;
+      $("#enterAppBtn").textContent = "ทดสอบการเชื่อมต่อให้สำเร็จก่อน";
+    });
+  }
+
+  /* ---------------- gate: hide the app until API key is verified ---------------- */
+  function unlockApp(){
+    state.everUnlocked = true;
+    $("#gateOverlay").classList.add("hidden");
+    $("#mainShell").classList.remove("locked");
+    $("#reopenGateBtn").style.display = "";
+    window.scrollTo({top:0});
+  }
+  function openGate(closable){
+    $("#gateOverlay").classList.remove("hidden");
+    $("#closeGateBtn").style.display = closable ? "" : "none";
+    $("#gateOverlay").scrollTop = 0;
+  }
+  $("#enterAppBtn").addEventListener("click", function(){
+    if(this.disabled) return;
+    unlockApp();
+  });
+  $("#closeGateBtn").addEventListener("click", function(){
+    $("#gateOverlay").classList.add("hidden");
+  });
+  $("#reopenGateBtn").addEventListener("click", function(){
+    openGate(true);
+  });
+
+  /* ---------------- gemini call ---------------- */
+  // โมเดลอ่านจาก dropdown ที่ระบบดึงมาจากบัญชีจริง (หรือช่อง "พิมพ์เอง" ถ้าเลือกไว้)
+  function readModelField(selectId, customId){
+    var sel = $(selectId);
+    if(!sel) return "gemini-2.0-flash";
+    if(sel.value === "__custom__"){
+      var c = $(customId).value.trim();
+      return c || "gemini-2.0-flash";
+    }
+    return sel.value || "gemini-2.0-flash";
+  }
+  function getPrimaryModel(){ return readModelField("#primaryModelSelect", "#primaryModelCustom"); }
+  function getAssistModel(){ return readModelField("#assistModelSelect", "#assistModelCustom"); }
+  function getExportModel(){ return readModelField("#exportModelSelect", "#exportModelCustom"); }
+
+  /* ---------------- auto-detect usable models from the connected account ---------------- */
+  function filterUsableModels(rawModels){
+    var out = [];
+    (rawModels || []).forEach(function(m){
+      var methods = m.supportedGenerationMethods || m.supportedActions || [];
+      if(methods.indexOf("generateContent") === -1) return;
+      var id = (m.name || "").replace(/^models\//, "");
+      if(!id) return;
+      if(/embedding|aqa|imagen|veo|tts|-live|live-|vision-language|bison|gecko/i.test(id)) return;
+      out.push(id);
+    });
+    return Array.from(new Set(out));
+  }
+  function rankForQuality(list){ // best/smartest first — for the primary songwriting model
+    function score(id){
+      if(/pro/i.test(id) && !/lite/i.test(id)) return 0;
+      if(/flash/i.test(id) && !/lite/i.test(id)) return 1;
+      if(/lite/i.test(id)) return 2;
+      return 3;
+    }
+    return list.slice().sort(function(a,b){ return score(a) - score(b) || a.localeCompare(b); });
+  }
+  function rankForSpeed(list){ // fastest/cheapest first — for assist + export helper tasks
+    function score(id){
+      if(/lite/i.test(id)) return 0;
+      if(/flash/i.test(id) && !/lite/i.test(id)) return 1;
+      if(/pro/i.test(id)) return 2;
+      return 3;
+    }
+    return list.slice().sort(function(a,b){ return score(a) - score(b) || a.localeCompare(b); });
+  }
+  function ensureOption(selectEl, value){
+    if(!selectEl || !value) return;
+    var exists = Array.prototype.some.call(selectEl.options, function(o){ return o.value === value; });
+    if(!exists){
+      var opt = document.createElement("option");
+      opt.value = value; opt.textContent = value;
+      selectEl.insertBefore(opt, selectEl.firstChild);
+    }
+  }
+  function populateSelect(selectId, orderedList){
+    var sel = $(selectId);
+    var current = sel.value;
+    sel.innerHTML = "";
+    orderedList.forEach(function(id){
+      var opt = document.createElement("option");
+      opt.value = id; opt.textContent = id;
+      sel.appendChild(opt);
+    });
+    var customOpt = document.createElement("option");
+    customOpt.value = "__custom__"; customOpt.textContent = "✏️ พิมพ์เอง...";
+    sel.appendChild(customOpt);
+    if(orderedList.indexOf(current) !== -1 || current === "__custom__"){ sel.value = current; }
+    else { sel.selectedIndex = 0; }
+  }
+  function fetchAndPopulateModels(key){
+    $("#modelDetectStatus").textContent = "กำลังดึงรายชื่อโมเดลที่ใช้ได้กับ key นี้...";
+    var url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + encodeURIComponent(key) + "&pageSize=1000";
+    return fetch(url).then(function(res){
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function(data){
+      var usable = filterUsableModels(data.models);
+      if(usable.length === 0){
+        $("#modelDetectStatus").textContent = "ดึงรายชื่อโมเดลที่ใช้ได้ไม่สำเร็จ — ใช้ gemini-2.0-flash เป็นค่าเริ่มต้นไปก่อน หรือเลือก \"พิมพ์เอง...\" ท้ายลิสต์";
+        return;
+      }
+      state.availableModels = usable;
+      populateSelect("#primaryModelSelect", rankForQuality(usable));
+      populateSelect("#assistModelSelect", rankForSpeed(usable));
+      populateSelect("#exportModelSelect", rankForSpeed(usable));
+      $("#modelDetectStatus").textContent = "พบโมเดลที่ใช้ได้กับ key นี้ " + usable.length + " ตัว เลือกให้อัตโนมัติแล้ว — กด 🔀 ข้างช่องเพื่อลองตัวถัดไปถ้าตัวนี้ error";
+      saveDraft();
+    }).catch(function(err){
+      $("#modelDetectStatus").textContent = "ดึงรายชื่อโมเดลไม่สำเร็จ (" + err.message + ") ใช้ gemini-2.0-flash ไปก่อนได้ หรือเลือก \"พิมพ์เอง...\"";
+    });
+  }
+  function cycleSelect(selectId){
+    var sel = $(selectId);
+    if(!sel || sel.options.length < 2) return;
+    sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+    sel.dispatchEvent(new Event("change"));
+    saveDraft();
+    toast("ลองใช้: " + sel.value);
+  }
+  [["#primaryModelSelect","#primaryModelCustom"],["#assistModelSelect","#assistModelCustom"],["#exportModelSelect","#exportModelCustom"]].forEach(function(pair){
+    var sel = $(pair[0]), custom = $(pair[1]);
+    sel.addEventListener("change", function(){
+      custom.style.display = sel.value === "__custom__" ? "" : "none";
+      saveDraft();
+    });
+    custom.addEventListener("input", saveDraft);
+  });
+  $("#cyclePrimaryBtn").addEventListener("click", function(){ cycleSelect("#primaryModelSelect"); });
+  $("#cycleAssistBtn").addEventListener("click", function(){ cycleSelect("#assistModelSelect"); });
+  $("#cycleExportBtn").addEventListener("click", function(){ cycleSelect("#exportModelSelect"); });
+
+  function callGemini(systemPrompt, contents, model){
+    var key = state.apiKey || $("#apiKey").value.trim();
+    if(!key){ return Promise.reject(new Error("ยังไม่ได้ใส่ API key")); }
+    var useModel = model || getPrimaryModel();
+    var url = "https://generativelanguage.googleapis.com/v1beta/models/" + useModel + ":generateContent?key=" + encodeURIComponent(key);
+    var body = {
+      contents: contents,
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { temperature: 0.95, maxOutputTokens: 3000 }
+    };
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function(res){
+      if(!res.ok){ return res.text().then(function(t){ throw new Error("HTTP " + res.status + " — " + t.slice(0,300)); }); }
+      return res.json();
+    }).then(function(data){
+      var candidate = data.candidates && data.candidates[0];
+      if(!candidate){ throw new Error("ไม่ได้รับผลลัพธ์จากโมเดล (อาจถูกบล็อกด้วยตัวกรองความปลอดภัย)"); }
+      var text = (candidate.content && candidate.content.parts || []).map(function(p){ return p.text || ""; }).join("");
+      return text;
+    });
+  }
+
+  function parseModelJson(raw){
+    var cleaned = raw.trim().replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    return JSON.parse(cleaned);
+  }
+
+  /* ---------------- prompt building ---------------- */
+  function buildSystemPrompt(lyricsLang){
+    return [
+      "คุณคือ \"ครูเพลง\" นักแต่งเนื้อเพลงระดับปรมาจารย์ที่มีประสบการณ์แต่งเพลงฮิตมานับร้อยเพลง ไม่ใช่แค่คนแต่งกลอนคล้องจองทั่วไป งานของคุณต้องมีฝีมือทางวรรณศิลป์ระดับมืออาชีพ พร้อมเตรียมเนื้อเพลงให้ใช้กับ Suno (โปรแกรมสร้างเพลงด้วย AI) ได้ทันที",
+      "กติกาด้านโครงสร้างที่ต้องทำตามอย่างเคร่งครัด:",
+      "1. ใช้ tag โครงสร้างเพลงในวงเล็บเหลี่ยมกำกับทุกท่อน เช่น [Intro], [Verse 1], [Verse 2], [Pre-Chorus], [Chorus], [Bridge], [Hook], [Refrain], [Outro] ให้ตรงกับลำดับและประเภทที่ผู้ใช้กำหนดมาเป๊ะๆ ห้ามเพิ่มหรือลดท่อนเอง ถ้ามีท่อนประเภทเดียวกันซ้ำหลายครั้งให้ใส่เลขกำกับ เช่น [Verse 1] [Verse 2]",
+      "2. เขียนเนื้อเพลงเป็นภาษา " + lyricsLang,
+      "3. สร้าง style_prompt เป็นภาษาอังกฤษ ความยาวไม่เกิน 120 ตัวอักษร คั่นด้วยจุลภาค อธิบายแนวเพลง อารมณ์ ลักษณะเสียงร้อง และเครื่องดนตรีหลัก ให้เหมาะสำหรับใส่ในช่อง Style of Music ของ Suno",
+      "4. ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำอธิบายอื่นนอก JSON ห้ามใช้ code fence โดยมีโครงสร้างตายตัวดังนี้:",
+      '{"title": "ชื่อเพลง", "style_prompt": "...", "lyrics_lines": ["[Intro]", "(บรรทัดเนื้อร้องหรือคำอธิบายดนตรี)", "", "[Verse 1]", "บรรทัดที่ 1", "บรรทัดที่ 2", "", "[Chorus]", "..."], "notes": "หมายเหตุสั้นๆ เกี่ยวกับแนวทางการแต่ง (1-2 ประโยค)"}',
+      "5. ฟิลด์ lyrics_lines ต้องเป็น JSON array ของสตริง โดย 1 สมาชิก = 1 บรรทัดของ lyric sheet ห้ามรวมหลายบรรทัดไว้ในสตริงเดียวโดยใช้ \\n คั่น — ให้แยกเป็นสมาชิกใหม่ในอาเรย์แทนเสมอ ใส่สมาชิกที่เป็นสตริงว่าง \"\" เพื่อคั่นบรรทัดว่างระหว่างท่อน แต่ละ tag โครงสร้าง เช่น [Chorus] ต้องอยู่เป็นสมาชิกของตัวเองแยกจากเนื้อร้อง",
+      "",
+      "กติกาด้านฝีมือการแต่ง (สำคัญมาก — นี่คือสิ่งที่แยกครูเพลงออกจากคนแต่งกลอนทั่วไป):",
+      "6. ห้ามใช้วลีสำเร็จรูป/คำซ้ำซากที่เจอเกลื่อนในเพลงทั่วไปโดยเด็ดขาด เช่น \"รักเธอสุดหัวใจ\", \"น้ำตาริน\", \"ใจสลาย\", \"รักแท้\", \"หัวใจสลาย\", \"เก็บความเจ็บปวด\" หรือวลีคล้ายกันที่ฟังแล้วรู้สึกเหมือนเคยได้ยินมาแล้วนับพันครั้ง — ให้คิดคำ/ภาพใหม่ที่เฉพาะเจาะจงกับเรื่องราวนี้เท่านั้น ไม่ใช้ซ้ำจากเพลงอื่น",
+      "7. ใช้เทคนิค \"show, don't tell\" เสมอ: แทนที่จะบอกอารมณ์ตรงๆ (เช่น \"ฉันเศร้ามาก\") ให้สร้างภาพ ฉาก หรือรายละเอียดที่จับต้องได้ซึ่งสื่ออารมณ์นั้นแทน (เช่น บรรยายการกระทำ วัตถุ สภาพแวดล้อม ที่สะท้อนความเศร้าโดยไม่ต้องเอ่ยคำว่าเศร้า) โดยเชื่อมโยงกับรายละเอียดในเรื่องราวที่ผู้ใช้ให้มาอย่างเจาะจง ไม่เขียนแบบเหมารวมกว้างๆ",
+      "8. ใส่ใจเรื่องเสียงเวลาร้อง: นอกจากสัมผัสท้ายบรรทัดแล้ว ให้ใช้สัมผัสใน (เสียงสระคล้องจองกันภายในบรรทัดเดียวกันหรือบรรทัดถัดไป) แบบที่ครูเพลงไทยใช้กัน เพื่อให้ร้องแล้วลื่นไหล ไม่บิดลิ้น เลือกคำที่ออกเสียงง่ายเมื่อร้องตามจังหวะเพลง",
+      "9. แต่ละท่อนต้องมีบทบาทและทำหน้าที่ต่างกันชัดเจน ห้ามวนซ้ำความคิดเดิม: [Verse] แต่ละรอบต้องเล่าคนละมุม/คนละจุดของเรื่องราว ไม่ใช้ประโยคซ้ำความหมายเดิมกับ verse ก่อนหน้า; [Chorus] ต้องมีอย่างน้อย 1 ประโยคที่เป็น \"hook\" — จำง่าย กระชับ ทรงพลัง สรุปแก่นของเพลงได้ในประโยคเดียว และประโยคนี้ควรซ้ำเหมือนเดิมทุกครั้งที่ chorus กลับมา; [Bridge] ต้องพลิกมุมมองหรือให้ข้อคิด/จุดเปลี่ยนที่ต่างจากท่อนอื่นทั้งเพลง",
+      "10. วางอารมณ์ให้มีพัฒนาการ (emotional arc) ตลอดทั้งเพลง ไม่ใช่คงที่แบบเดียวตั้งแต่ต้นจนจบ — ให้ความเข้มข้นของอารมณ์ค่อยๆ ก่อตัวและพุ่งสูงสุดในจุดที่เหมาะสม (มักจะเป็น chorus สุดท้ายหรือ bridge)"
+    ].join("\n");
+  }
+
+  function buildUserPrompt(){
+    var story = $("#storyInput").value.trim();
+    var genreCustom = $("#genreCustom").value.trim();
+    var genreList = Array.from(state.genres);
+    if(genreCustom){ genreCustom.split(",").forEach(function(g){ g=g.trim(); if(g) genreList.push(g); }); }
+    var moodList = Array.from(state.moods);
+    var vocab = $("#vocabStyle").value;
+    var rhyme = $("#rhymeStyle").value;
+    var structure = state.tracks.join(", ");
+
+    var lines = [];
+    lines.push("เรื่องราว/แนวคิดหลักของเพลง: " + (story || "(ผู้ใช้ไม่ได้ระบุ ให้คิดเนื้อหาที่เข้ากับแนวเพลงและอารมณ์ที่เลือกเอง)"));
+    lines.push("แนวเพลง: " + (genreList.length ? genreList.join(", ") : "ไม่ระบุ ให้เลือกให้เหมาะสม"));
+    lines.push("อารมณ์เพลง: " + (moodList.length ? moodList.join(", ") : "ไม่ระบุ ให้เลือกให้เหมาะสม"));
+    lines.push("โทนคำ/วิธีใช้ภาษา: " + vocab);
+    lines.push("รูปแบบสัมผัส: " + rhyme);
+    lines.push("โครงสร้างเพลงที่ต้องแต่งตาม (เรียงตามลำดับ ห้ามสลับ): " + structure);
+    lines.push("โปรดแต่งเพลงตามข้อมูลข้างต้น แล้วตอบกลับเป็น JSON ตามรูปแบบที่กำหนดเท่านั้น");
+    return lines.join("\n");
+  }
+
+  /* ---------------- generate ---------------- */
+  $("#generateBtn").addEventListener("click", function(){
+    generateSong();
+  });
+
+  function generateSong(){
+    clearAlert("#genAlert");
+    var key = $("#apiKey").value.trim();
+    if(!key){ showAlert("#genAlert", "error", "กรุณาใส่และทดสอบ Gemini API key ก่อนแต่งเพลง"); return; }
+    state.apiKey = key;
+    if(state.tracks.length === 0){ showAlert("#genAlert", "error", "กรุณาเพิ่มโครงสร้างเพลงอย่างน้อย 1 ท่อน"); return; }
+
+    var lyricsLang = $("#lyricsLang").value;
+    var sys = buildSystemPrompt(lyricsLang);
+    var userMsg = buildUserPrompt();
+
+    state.conversation = [{ role: "user", parts: [{ text: userMsg }] }];
+
+    setGenerating(true);
+    callGemini(sys, state.conversation, getPrimaryModel()).then(function(raw){
+      state.conversation.push({ role: "model", parts: [{ text: raw }] });
+      var parsed;
+      try{ parsed = parseModelJson(raw); }
+      catch(e){
+        renderRawFallback(raw);
+        showAlert("#genAlert", "info", "แต่งเพลงสำเร็จ แต่จัดรูปแบบผลลัพธ์อัตโนมัติไม่ได้ — แสดงข้อความดิบด้านล่างแทน");
+        setGenerating(false);
+        return;
+      }
+      state.lastResult = parsed;
+      renderResult(parsed);
+      setGenerating(false);
+    }).catch(function(err){
+      showAlert("#genAlert", "error", "แต่งเพลงไม่สำเร็จ: " + err.message);
+      setGenerating(false);
+    });
+  }
+
+  function setGenerating(on){
+    var btn = $("#generateBtn");
+    btn.disabled = on;
+    btn.innerHTML = on ? '<span class="spinner"></span> กำลังแต่งเพลง...' : '● แต่งเนื้อเพลงตอนนี้';
+  }
+
+  function highlightTags(lyrics){
+    return esc(lyrics).replace(/\[([^\]]+)\]/g, '<span class="tagline">[$1]</span>');
+  }
+
+  // ดึงเนื้อเพลงเป็นข้อความบรรทัดจริง — รองรับทั้งฟอร์แมตใหม่ (lyrics_lines: array)
+  // และฟอร์แมตเก่า/กรณีโมเดลตอบ string เดี่ยวที่อาจมี "\n" เป็นตัวอักษรดิบหลุดมา (ซ่อมให้อัตโนมัติ)
+  function getLyricsText(r){
+    if(!r) return "";
+    if(Array.isArray(r.lyrics_lines)) return r.lyrics_lines.join("\n");
+    if(typeof r.lyrics === "string") return r.lyrics.split("\\n").join("\n");
+    return "";
+  }
+
+  function renderResult(r){
+    $("#outputPanel").classList.add("glow-active");
+    $("#genSrtBtn").disabled = false;
+    $("#genYtBtn").disabled = false;
+    saveDraft();
+    var area = $("#outputArea");
+    var lyricsText = getLyricsText(r);
+    area.innerHTML =
+      '<div class="out-title">' + esc(r.title || "ไม่มีชื่อเพลง") + '</div>' +
+      '<div class="out-block">' +
+        '<div class="out-head"><h3>Style Prompt (ใส่ในช่อง Style of Music)</h3>' +
+          '<button class="btn-icon" data-copy="style">คัดลอก</button></div>' +
+        '<div class="style-box" id="stylePromptText">' + esc(r.style_prompt || "") + '</div>' +
+      '</div>' +
+      '<div class="out-block">' +
+        '<div class="out-head"><h3>เนื้อเพลง (พร้อม tag สำหรับ Suno)</h3>' +
+          '<button class="btn-icon" data-copy="lyrics">คัดลอก</button></div>' +
+        '<div class="lyrics-box" id="lyricsText">' + highlightTags(lyricsText) + '</div>' +
+      '</div>' +
+      (r.notes ? '<div class="alert alert-info">' + esc(r.notes) + '</div>' : '') +
+      '<div class="revise-row">' +
+        '<input type="text" id="reviseInput" placeholder="อยากปรับแก้อะไรไหม เช่น ทำท่อน Bridge ให้เศร้ากว่านี้">' +
+        '<button class="btn btn-primary btn-small" id="reviseBtn" type="button">ปรับแก้</button>' +
+      '</div>';
+
+    area.querySelector('[data-copy="style"]').addEventListener("click", function(){ copyText(r.style_prompt || ""); });
+    area.querySelector('[data-copy="lyrics"]').addEventListener("click", function(){ copyText(lyricsText); });
+    $("#reviseBtn").addEventListener("click", reviseSong);
+  }
+
+  function renderRawFallback(raw){
+    var area = $("#outputArea");
+    area.innerHTML =
+      '<div class="out-block"><div class="out-head"><h3>ผลลัพธ์ดิบจากโมเดล</h3>' +
+      '<button class="btn-icon" data-copy="raw">คัดลอก</button></div>' +
+      '<div class="lyrics-box">' + esc(raw) + '</div></div>';
+    area.querySelector('[data-copy="raw"]').addEventListener("click", function(){ copyText(raw); });
+  }
+
+  function reviseSong(){
+    var instruction = $("#reviseInput").value.trim();
+    if(!instruction){ toast("พิมพ์สิ่งที่อยากปรับแก้ก่อน"); return; }
+    if(!state.conversation.length){ toast("ยังไม่มีเพลงให้แก้ กรุณาแต่งเพลงก่อน"); return; }
+
+    var lyricsLang = $("#lyricsLang").value;
+    var sys = buildSystemPrompt(lyricsLang);
+    state.conversation.push({ role: "user", parts: [{ text: "โปรดปรับแก้เพลงตามคำแนะนำนี้: " + instruction + " — ตอบกลับเป็น JSON รูปแบบเดิมทั้งหมด (title, style_prompt, lyrics_lines เป็น array ของบรรทัด, notes) โดยคงโครงสร้าง tag เดิมไว้ เว้นแต่คำแนะนำจะขอให้เปลี่ยนโครงสร้าง" }] });
+
+    var btn = $("#reviseBtn");
+    btn.disabled = true;
+    var origLabel = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    callGemini(sys, state.conversation, getPrimaryModel()).then(function(raw){
+      state.conversation.push({ role: "model", parts: [{ text: raw }] });
+      var parsed;
+      try{ parsed = parseModelJson(raw); }
+      catch(e){ renderRawFallback(raw); btn.disabled = false; btn.textContent = origLabel; return; }
+      state.lastResult = parsed;
+      renderResult(parsed);
+      toast("ปรับแก้เรียบร้อย");
+    }).catch(function(err){
+      toast("ปรับแก้ไม่สำเร็จ: " + err.message);
+      btn.disabled = false;
+      btn.textContent = origLabel;
+    });
+  }
+
+  /* ---------------- story assist (gemini-3.1-flash-lite-preview) ---------------- */
+  function assistSystemPrompt(){
+    return "คุณคือผู้ช่วยนักแต่งเพลงที่ช่วยระดมไอเดียเรื่องราวและโครงสร้างเพลงอย่างรวดเร็ว ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำอธิบายอื่นนอก JSON ห้ามใช้ code fence";
+  }
+
+  $("#randomStoryBtn").addEventListener("click", function(){
+    clearAlert("#storyAssistAlert");
+    var key = $("#apiKey").value.trim();
+    if(!key){ showAlert("#storyAssistAlert", "error", "ใส่ Gemini API key ก่อน"); return; }
+    state.apiKey = key;
+    var btn = this; var orig = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+    var prompt = [
+      "สุ่มไอเดียเพลงใหม่ 1 ไอเดียที่มีมิติและไม่ซ้ำซาก",
+      "แนวเพลงให้เลือกจากลิสต์นี้เท่านั้น (เลือก 1-2 อัน): " + GENRES.join(", "),
+      "อารมณ์เพลงให้เลือกจากลิสต์นี้เท่านั้น (เลือก 1-3 อัน): " + MOODS.join(", "),
+      'ตอบกลับเป็น JSON: {"story": "เรื่องราว/แนวคิดหลัก 2-4 ประโยค เป็นภาษาไทย", "genres": ["..."], "moods": ["..."]}'
+    ].join("\n");
+
+    callGemini(assistSystemPrompt(), [{ role: "user", parts: [{ text: prompt }] }], getAssistModel()).then(function(raw){
+      var parsed = parseModelJson(raw);
+      $("#storyInput").value = parsed.story || "";
+      applyChipSelection("#genreChips", state.genres, parsed.genres || []);
+      applyChipSelection("#moodChips", state.moods, parsed.moods || []);
+      toast("สุ่มไอเดียใหม่แล้ว");
+    }).catch(function(err){
+      showAlert("#storyAssistAlert", "error", "สุ่มไอเดียไม่สำเร็จ: " + err.message);
+    }).finally(function(){
+      btn.disabled = false; btn.textContent = orig;
+    });
+  });
+
+  $("#expandStoryBtn").addEventListener("click", function(){
+    clearAlert("#storyAssistAlert");
+    var key = $("#apiKey").value.trim();
+    if(!key){ showAlert("#storyAssistAlert", "error", "ใส่ Gemini API key ก่อน"); return; }
+    state.apiKey = key;
+    var current = $("#storyInput").value.trim();
+    if(!current){ showAlert("#storyAssistAlert", "error", "พิมพ์ไอเดียคร่าวๆ ในช่องด้านบนก่อน แล้วค่อยให้ช่วยขยาย"); return; }
+    var btn = this; var orig = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+    var prompt = "ขยายไอเดียเพลงนี้ให้มีรายละเอียด ตัวละคร ฉาก และจุดเปลี่ยนอารมณ์ชัดเจนขึ้น (3-6 ประโยค เป็นภาษาไทย) โดยคงแก่นเรื่องเดิมไว้: \"" + current + "\"\nตอบกลับเป็น JSON: {\"story\": \"...\"}";
+
+    callGemini(assistSystemPrompt(), [{ role: "user", parts: [{ text: prompt }] }], getAssistModel()).then(function(raw){
+      var parsed = parseModelJson(raw);
+      $("#storyInput").value = parsed.story || current;
+      toast("ขยายไอเดียแล้ว");
+    }).catch(function(err){
+      showAlert("#storyAssistAlert", "error", "ขยายไอเดียไม่สำเร็จ: " + err.message);
+    }).finally(function(){
+      btn.disabled = false; btn.textContent = orig;
+    });
+  });
+
+  function applyChipSelection(containerId, targetSet, values){
+    targetSet.clear();
+    $all(containerId + " .chip").forEach(function(chip){ chip.classList.remove("active"); });
+    values.forEach(function(v){
+      $all(containerId + " .chip").forEach(function(chip){
+        if(chip.textContent === v){ chip.classList.add("active"); targetSet.add(v); }
+      });
+    });
+  }
+
+  /* ---------------- structure suggestion (gemini-3.1-flash-lite-preview) ---------------- */
+  $("#suggestStructureBtn").addEventListener("click", function(){
+    clearAlert("#structureAssistAlert");
+    var key = $("#apiKey").value.trim();
+    if(!key){ showAlert("#structureAssistAlert", "error", "ใส่ Gemini API key ก่อน"); return; }
+    state.apiKey = key;
+    var btn = this; var orig = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+    var story = $("#storyInput").value.trim();
+    var genreList = Array.from(state.genres);
+    var moodList = Array.from(state.moods);
+    var allowed = ["Intro","Verse","Pre-Chorus","Chorus","Bridge","Hook","Refrain","Outro"];
+    var prompt = [
+      "แนะนำโครงสร้างเพลงที่เหมาะกับข้อมูลนี้ โดยเลือกท่อนจากลิสต์นี้เท่านั้น (ใช้ซ้ำได้): " + allowed.join(", "),
+      "เรื่องราว: " + (story || "ไม่ระบุ"),
+      "แนวเพลง: " + (genreList.length ? genreList.join(", ") : "ไม่ระบุ"),
+      "อารมณ์: " + (moodList.length ? moodList.join(", ") : "ไม่ระบุ"),
+      'ตอบกลับเป็น JSON: {"structure": ["Intro","Verse", "..."]} เรียงตามลำดับที่ควรใช้จริง ความยาวรวม 6-10 ท่อน'
+    ].join("\n");
+
+    callGemini(assistSystemPrompt(), [{ role: "user", parts: [{ text: prompt }] }], getAssistModel()).then(function(raw){
+      var parsed = parseModelJson(raw);
+      var structure = (parsed.structure || []).filter(function(t){ return allowed.indexOf(t) !== -1; });
+      if(!structure.length){ throw new Error("โมเดลไม่ได้ส่งโครงสร้างที่ใช้ได้กลับมา"); }
+      state.tracks = structure;
+      renderTracks();
+      toast("แนะนำโครงสร้างใหม่แล้ว");
+    }).catch(function(err){
+      showAlert("#structureAssistAlert", "error", "แนะนำโครงสร้างไม่สำเร็จ: " + err.message);
+    }).finally(function(){
+      btn.disabled = false; btn.textContent = orig;
+    });
+  });
+
+  /* ---------------- export: SRT (gemini-3-flash-preview) ---------------- */
+  $("#genSrtBtn").addEventListener("click", function(){
+    clearAlert("#exportAlert");
+    if(!state.lastResult){ showAlert("#exportAlert", "error", "ยังไม่มีเพลง กรุณาแต่งเพลงในขั้นตอน 05 ก่อน"); return; }
+    var key = $("#apiKey").value.trim();
+    if(!key){ showAlert("#exportAlert", "error", "ใส่ Gemini API key ก่อน"); return; }
+    state.apiKey = key;
+    var duration = parseInt($("#songDuration").value, 10) || 180;
+    var btn = this; var orig = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+    var sys = "คุณคือผู้เชี่ยวชาญการทำคำบรรยาย (subtitle) เพลง ตอบกลับเป็นเนื้อหาไฟล์ .srt ที่ถูกต้องตามมาตรฐานเท่านั้น ห้ามมีคำอธิบายอื่น ห้ามใช้ code fence ห้ามใส่ tag โครงสร้างเพลง เช่น [Chorus] ลงในคำบรรยาย ให้ข้ามบรรทัด tag เหล่านั้นไป ใช้เฉพาะเนื้อร้องจริง";
+    var prompt = [
+      "เนื้อเพลงทั้งหมด (มี tag โครงสร้างกำกับ):",
+      getLyricsText(state.lastResult),
+      "",
+      "ความยาวเพลงทั้งหมดโดยประมาณ: " + duration + " วินาที",
+      "โปรดกะจังหวะเวลาของแต่ละบรรทัดเนื้อร้องให้กระจายสมเหตุสมผลตลอดความยาวเพลง แล้วสร้างไฟล์ .srt ที่มี index, timestamp รูปแบบ HH:MM:SS,mmm --> HH:MM:SS,mmm และเนื้อร้องบรรทัดนั้น"
+    ].join("\n");
+
+    callGemini(sys, [{ role: "user", parts: [{ text: prompt }] }], getExportModel()).then(function(raw){
+      var cleaned = raw.trim().replace(/^```srt/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+      state.lastSrt = cleaned;
+      $("#srtOutBlock").style.display = "block";
+      $("#srtText").textContent = cleaned;
+      toast("สร้างไฟล์ SRT แล้ว");
+    }).catch(function(err){
+      showAlert("#exportAlert", "error", "สร้าง SRT ไม่สำเร็จ: " + err.message);
+    }).finally(function(){
+      btn.disabled = false; btn.textContent = orig;
+    });
+  });
+
+  $("#copySrtBtn").addEventListener("click", function(){ copyText(state.lastSrt || ""); });
+  $("#downloadSrtBtn").addEventListener("click", function(){
+    if(!state.lastSrt){ toast("ยังไม่มีไฟล์ SRT"); return; }
+    var blob = new Blob([state.lastSrt], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = ((state.lastResult && state.lastResult.title) || "lyrics").replace(/[^a-zA-Z0-9ก-๙ _-]/g, "") + ".srt";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  /* ---------------- export: YouTube description (gemini-3-flash-preview) ---------------- */
+  $("#genYtBtn").addEventListener("click", function(){
+    clearAlert("#exportAlert");
+    if(!state.lastResult){ showAlert("#exportAlert", "error", "ยังไม่มีเพลง กรุณาแต่งเพลงในขั้นตอน 05 ก่อน"); return; }
+    var key = $("#apiKey").value.trim();
+    if(!key){ showAlert("#exportAlert", "error", "ใส่ Gemini API key ก่อน"); return; }
+    state.apiKey = key;
+    var btn = this; var orig = btn.textContent;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+    var genreList = Array.from(state.genres).join(", ");
+    var moodList = Array.from(state.moods).join(", ");
+    var sys = "คุณคือผู้เชี่ยวชาญการทำ SEO และคำโปรยสำหรับ YouTube เพลง ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำอธิบายอื่นนอก JSON ห้ามใช้ code fence";
+    var prompt = [
+      "ชื่อเพลง: " + (state.lastResult.title || ""),
+      "แนวเพลง: " + (genreList || "ไม่ระบุ"),
+      "อารมณ์: " + (moodList || "ไม่ระบุ"),
+      "เนื้อเพลงบางส่วน (สำหรับอ้างอิงบริบท): " + getLyricsText(state.lastResult).slice(0, 600),
+      'สร้างเนื้อหาสำหรับโพสต์ YouTube ตอบกลับเป็น JSON: {"titles": ["ชื่อคลิปแนะนำ 3 แบบ"], "description": "คำอธิบายวิดีโอ 3-5 บรรทัด ภาษาไทย น่าสนใจ มี call-to-action เบาๆ", "hashtags": ["#แฮชแท็ก", "..."] } โดยมีแฮชแท็ก 6-10 อัน'
+    ].join("\n");
+
+    callGemini(sys, [{ role: "user", parts: [{ text: prompt }] }], getExportModel()).then(function(raw){
+      var parsed = parseModelJson(raw);
+      state.lastYoutube = parsed;
+      $("#ytOutBlock").style.display = "block";
+      $("#ytTitles").innerHTML = (parsed.titles || []).map(function(t){ return esc(t); }).join("<br>");
+      $("#ytDescription").textContent = parsed.description || "";
+      $("#ytTags").textContent = (parsed.hashtags || []).join(" ");
+      toast("สร้างคำโปรยยูทูปแล้ว");
+    }).catch(function(err){
+      showAlert("#exportAlert", "error", "สร้างคำโปรยไม่สำเร็จ: " + err.message);
+    }).finally(function(){
+      btn.disabled = false; btn.textContent = orig;
+    });
+  });
+
+  $all('[data-copy-yt]').forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var kind = btn.getAttribute("data-copy-yt");
+      var yt = state.lastYoutube || {};
+      if(kind === "titles"){ copyText((yt.titles || []).join("\n")); }
+      else if(kind === "desc"){ copyText(yt.description || ""); }
+      else if(kind === "tags"){ copyText((yt.hashtags || []).join(" ")); }
+    });
+  });
+
+  /* ---------------- auto-test on load for returning users with a remembered key ---------------- */
+  if(savedKey){
+    setKeyStatus("pending", "พบ key ที่จำไว้ กำลังทดสอบการเชื่อมต่ออัตโนมัติ...");
+    testConnection();
+  }
+
+})();
+</script>
+</body>
+</html>
